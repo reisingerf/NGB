@@ -26,6 +26,7 @@ package com.epam.catgenome.manager.wig.reader;
 
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.Assert;
 
 import java.util.ArrayList;
@@ -67,7 +68,7 @@ public class BedGraphCodec extends AsciiFeatureCodec<BedGraphFeature> {
     @Override
     public BedGraphFeature decode(String line) {
 
-        if (line.trim().isEmpty()) {
+        if (StringUtils.isEmpty(line)) {
             return null;
         }
 

@@ -25,6 +25,7 @@
 package com.epam.catgenome.manager.bed.parser;
 
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +85,7 @@ public class NggbBedCodec extends AsciiFeatureCodec<NggbBedFeature> {
      */
     @Override
     public NggbBedFeature decode(String line) {
-        if (line.trim().isEmpty()) {
+        if (StringUtils.isEmpty(line)) {
             return null;
         }
         if (line.startsWith("#") || line.startsWith("track") || line.startsWith("browser")) {

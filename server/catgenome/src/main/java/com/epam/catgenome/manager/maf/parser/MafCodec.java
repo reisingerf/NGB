@@ -33,6 +33,7 @@ import com.epam.catgenome.manager.gene.parser.StrandSerializable;
 import com.epam.catgenome.util.Utils;
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Codec for parsing file with MAF format. Codec decodes {@code MafFeature}
@@ -80,7 +81,7 @@ public class MafCodec extends AsciiFeatureCodec<MafFeature> {
      */
     @Override
     public MafFeature decode(String line) {
-        if (line.trim().isEmpty()) {
+        if (StringUtils.isEmpty(line)) {
             return null;
         }
         if (line.startsWith("#") || line.startsWith("Hugo_Symbol")) {

@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 
 import htsjdk.tribble.AsciiFeatureCodec;
 import htsjdk.tribble.readers.LineIterator;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * {@code SegCodec} is a codec for parsing data from a seg file according to the
@@ -55,7 +56,7 @@ public class SegCodec extends AsciiFeatureCodec<SegFeature> {
      */
     @Override
     public SegFeature decode(String line) {
-        if (line.trim().isEmpty()) {
+        if (StringUtils.isEmpty(line)) {
             return null;
         }
         if (line.startsWith("'") || line.startsWith("Sample")) {
