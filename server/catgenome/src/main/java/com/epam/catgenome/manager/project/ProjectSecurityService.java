@@ -31,7 +31,6 @@ import com.epam.catgenome.exception.FeatureIndexException;
 import com.epam.catgenome.security.acl.aspect.AclTree;
 import com.epam.catgenome.security.acl.aspect.AclFilterAndTree;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -59,13 +58,13 @@ public class ProjectSecurityService {
     }
 
     @AclTree
-    @PreAuthorize(READ_PROJECT_BY_ID)
+    @PreAuthorize(ROLE_USER)
     public Project load(Long projectId) {
         return projectManager.load(projectId);
     }
 
     @AclTree
-    @PostAuthorize("isAllowed(returnObject, 'READ')")
+    @PreAuthorize(ROLE_USER)
     public Project load(String projectName) {
         return projectManager.load(projectName);
     }
