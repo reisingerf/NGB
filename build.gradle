@@ -30,7 +30,7 @@ class Version {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.3'
+    gradleVersion = '4.8'
 }
 
 task ui(type: Copy) {
