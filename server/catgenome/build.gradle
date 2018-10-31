@@ -86,9 +86,9 @@ ext['jetty.version'] = '9.4.8.v20171121'
 
 // >>>>> external dependencies used to compile and/or run application
 dependencies {
-#    def withoutServlet = { exclude group: 'com.sun.jersey.jersey-test-framework', module: 'jersey-test-framework-grizzly2'
-#                           exclude group: 'org.mortbay.jetty', module: 'jetty-util'
-#                         }
+//    def withoutServlet = { exclude group: 'com.sun.jersey.jersey-test-framework', module: 'jersey-test-framework-grizzly2'
+//                           exclude group: 'org.mortbay.jetty', module: 'jetty-util'
+//                         }
 
     // >>>>> dependencies used to compile application and include into artifact
     // Spring Framework
