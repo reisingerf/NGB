@@ -1,3 +1,7 @@
 /dist
 /docs/site
 /.gradle
+/H2
+/.idea
+/contents
+/server/catgenome/src/main/resources/static/ngb-logo.png
