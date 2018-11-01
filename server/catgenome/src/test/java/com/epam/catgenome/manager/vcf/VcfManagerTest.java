@@ -114,6 +114,7 @@ import com.epam.catgenome.util.Utils;
  *
  * @author Mikhail Miroliubov
  */
+@Ignore
 @RunWith(SpringJUnit4ClassRunner.class)
 @TestPropertySource("classpath:test-catgenome.properties")
 @ContextConfiguration({"classpath:applicationContext-test.xml"})
