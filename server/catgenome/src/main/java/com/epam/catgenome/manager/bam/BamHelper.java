@@ -45,6 +45,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import com.amazonaws.HttpMethod;
+import com.amazonaws.SdkClientException;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicSessionCredentials;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenService;
+import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClientBuilder;
+import com.amazonaws.services.securitytoken.model.*;
+import com.amazonaws.services.s3.AmazonS3;
 import com.epam.catgenome.entity.bam.BamFile;
 import com.epam.catgenome.entity.bam.BamQueryOption;
 import com.epam.catgenome.entity.bam.BamTrack;
@@ -74,8 +84,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
 import com.epam.catgenome.constant.Constants;
 import com.epam.catgenome.constant.MessagesConstants;
 import com.epam.catgenome.controller.vo.registration.IndexedFileRegistrationRequest;
@@ -503,10 +511,38 @@ public class BamHelper {
         Assert.notNull(indexFile.getBucketId(), getMessage(MessagesConstants.ERROR_S3_BUCKET));
         final Bucket bucket = bucketManager.loadBucket(indexFile.getBucketId());
         Assert.notNull(bucket, getMessage(MessagesConstants.ERROR_S3_BUCKET));
-        final AmazonS3 s3Client = new AmazonS3Client(new BasicAWSCredentials(bucket.getAccessKeyId(),
-                bucket.getSecretAccessKey()));
-        return samInputResource.index(s3Client.generatePresignedUrl(bucket.getBucketName(), indexFile.getPath(),
-                Utils.getTimeForS3URL()));
+
+        URL presignedUrl = null;
+        try {
+            AmazonS3 s3Client = getAmazonS3Client(
+                    "ap-southeast-2",
+                    "arn:aws:iam::620123204273:role/ops_admin_no_mfa",
+                    "tempSession",
+                    bucket.getAccessKeyId(),
+                    bucket.getSecretAccessKey());
+
+            // Set the presigned URL to expire after one hour.
+            Date expiration = new Date();
+            long expTimeMillis = expiration.getTime();
+            expTimeMillis += 1000 * 60 * 60;
+            expiration.setTime(expTimeMillis);
+
+            // Generate the presigned URL.
+            LOG.debug("Generating pre-signed URL.");
+            GeneratePresignedUrlRequest generatePresignedUrlRequest =
+                    new GeneratePresignedUrlRequest(bucket.getBucketName(), indexFile.getPath())
+                            .withMethod(HttpMethod.GET)
+                            .withExpiration(expiration);
+            presignedUrl = s3Client.generatePresignedUrl(generatePresignedUrlRequest);
+            LOG.info("Pre-signed URL: " + presignedUrl);
+
+        } catch(SdkClientException e) {
+            // Amazon S3 couldn't be contacted for a response, or the client
+            // couldn't parse the response from Amazon S3.
+            e.printStackTrace();
+        }
+
+        return samInputResource.index(presignedUrl);
     }
 
     private SamInputResource loadFile(final BamFile bamFile)
@@ -540,10 +576,41 @@ public class BamHelper {
     @NotNull private SamInputResource getS3SamInputResource(BamFile bamFile) {
         final Bucket bucket = bucketManager.loadBucket(bamFile.getBucketId());
         Assert.notNull(bucket, getMessage(MessagesConstants.ERROR_S3_BUCKET));
-        final AmazonS3 s3Client = new AmazonS3Client(new BasicAWSCredentials(bucket.getAccessKeyId(),
-                bucket.getSecretAccessKey()));
-        return SamInputResource.of(s3Client.generatePresignedUrl(bucket.getBucketName(), bamFile.getPath(),
-                Utils.getTimeForS3URL()));
+
+
+
+        URL presignedUrl = null;
+        try {
+            AmazonS3 s3Client = getAmazonS3Client(
+                    "ap-southeast-2",
+                    "arn:aws:iam::620123204273:role/ops_admin_no_mfa",
+                    "tempSession",
+                    bucket.getAccessKeyId(),
+                    bucket.getSecretAccessKey());
+
+            // Set the presigned URL to expire after one hour.
+            Date expiration = new Date();
+            long expTimeMillis = expiration.getTime();
+            expTimeMillis += 1000 * 60 * 60;
+            expiration.setTime(expTimeMillis);
+
+            // Generate the presigned URL.
+            LOG.debug("Generating pre-signed URL.");
+            GeneratePresignedUrlRequest generatePresignedUrlRequest =
+                    new GeneratePresignedUrlRequest(bucket.getBucketName(), bamFile.getPath())
+                            .withMethod(HttpMethod.GET)
+                            .withExpiration(expiration);
+            presignedUrl = s3Client.generatePresignedUrl(generatePresignedUrlRequest);
+            LOG.info("Pre-signed URL: " + presignedUrl);
+
+        } catch(SdkClientException e) {
+            // Amazon S3 couldn't be contacted for a response, or the client
+            // couldn't parse the response from Amazon S3.
+            e.printStackTrace();
+        }
+
+        return SamInputResource.of(presignedUrl);
+
     }
 
     private SamReader openSamReaderResource(final SamInputResource inputResource,
@@ -571,6 +638,63 @@ public class BamHelper {
                 Constants.BAM_START_INDEX_TEST, Math.min(Constants.MAX_BAM_END_INDEX_TEST,
                         samSequenceRecord.getSequenceLength()), false);
         Assert.notNull(iterator);
+    }
+
+
+    private AmazonS3 getAmazonS3Client(String clientRegion, String roleARN, String roleSessionName, String accessKeyId, String secretAccessKey) {
+
+        AmazonS3 client = null;
+        try {
+            // Creating the STS client is part of your trusted code. It has
+            // the security credentials you use to obtain temporary security credentials.
+            AWSSecurityTokenService stsClient = AWSSecurityTokenServiceClientBuilder.standard()
+                    .withCredentials(new AWSStaticCredentialsProvider(
+                                    new BasicAWSCredentials(accessKeyId, secretAccessKey)
+                            ))
+                    .withRegion(clientRegion)
+                    .build();
+
+            // Assume the IAM role. Note that you cannot assume the role of an AWS root account;
+            // Amazon S3 will deny access. You must use credentials for an IAM user or an IAM role.
+            AssumeRoleRequest roleRequest = new AssumeRoleRequest()
+                    .withRoleArn(roleARN)
+                    .withRoleSessionName(roleSessionName)
+                    .withDurationSeconds(3600);
+
+            // assume the role and start a session
+            AssumeRoleResult assumeRoleResult = stsClient.assumeRole(roleRequest);
+
+//            System.out.println("Region: " + clientRegion);
+//            System.out.println("Role: " + roleARN);
+//            System.out.println("AK: " + accessKeyId);
+//            System.out.println("SK: " + secretAccessKey);
+//            System.out.println("Assumed session AK: " + assumeRoleResult.getCredentials().getAccessKeyId());
+//            System.out.println("Assumed session SK: " + assumeRoleResult.getCredentials().getSecretAccessKey());
+//            System.out.println("Assumed session TK: " + assumeRoleResult.getCredentials().getSessionToken());
+
+            // Package the temporary security credentials as a BasicSessionCredentials object
+            // for an Amazon S3 client object to use.
+            BasicSessionCredentials basicSessionCredentials = new BasicSessionCredentials(
+                    assumeRoleResult.getCredentials().getAccessKeyId(),
+                    assumeRoleResult.getCredentials().getSecretAccessKey(),
+                    assumeRoleResult.getCredentials().getSessionToken());
+
+
+            // Provide temporary security credentials so that the Amazon S3 client
+            // can send authenticated requests to Amazon S3. You create the client
+            // using the basicSessionCredentials object.
+
+            client = AmazonS3ClientBuilder.standard()
+                    .withCredentials(new AWSStaticCredentialsProvider(basicSessionCredentials))
+                    .withRegion(clientRegion)
+                    .build();
+        } catch(SdkClientException e) {
+            // Amazon S3 couldn't be contacted for a response, or the client
+            // couldn't parse the response from Amazon S3.
+            e.printStackTrace();
+        }
+
+        return client;
     }
 
 }
